@@ -375,6 +375,19 @@ Respond with the JSON structure as specified in your instructions.`;
     await this.storage.writeIndex(indexContent);
   }
 
+  /**
+   * Build a collision-safe filename by embedding a short content hash.
+   * e.g. "report.pdf" with hash abc123… → "report-abc12345.pdf"
+   * Identical content produces the same name (harmless overwrite);
+   * different content produces a different name (no collision).
+   */
+  private contentHashedFilename(filename: string, data: Buffer): string {
+    const hash = this.computeHash(data).slice(0, 8);
+    const dot = filename.lastIndexOf('.');
+    if (dot === -1) return `${filename}-${hash}`;
+    return `${filename.slice(0, dot)}-${hash}${filename.slice(dot)}`;
+  }
+
   private async saveOriginalFile(
     slug: string,
     request: IngestRequest,
@@ -396,9 +409,10 @@ Respond with the JSON structure as specified in your instructions.`;
       return null;
     }
 
-    await this.storage.saveUpload(slug, filename, buffer);
-    console.log(`[ingest] Saved original file: uploads/${slug}/${filename}`);
-    return `${slug}/${filename}`;
+    const safeFilename = this.contentHashedFilename(filename, buffer);
+    await this.storage.saveUpload(slug, safeFilename, buffer);
+    console.log(`[ingest] Saved original file: uploads/${slug}/${safeFilename}`);
+    return `${slug}/${safeFilename}`;
   }
 
   private async updateSourceFileFrontmatter(slug: string, sourceFile: string): Promise<void> {
