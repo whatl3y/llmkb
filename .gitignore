@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.log
+data/
+kb.config.json
+CLAUDE.md
+.DS_Store
