@@ -21,18 +21,24 @@ export function createLLMProvider(config: ProviderConfig): LLMProvider {
   }
 }
 
-export function createProviderFromEnv(): LLMProvider {
+export function createProviderFromEnv(): LLMProvider | null {
   const provider = (process.env.LLM_PROVIDER ?? 'claude') as ProviderName;
 
   if (provider === 'claude') {
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error('ANTHROPIC_API_KEY is required when LLM_PROVIDER=claude');
+    if (!apiKey) {
+      console.warn('[llm] ANTHROPIC_API_KEY not set — LLM features (ingest, query) will be unavailable');
+      return null;
+    }
     return new ClaudeProvider(apiKey, process.env.CLAUDE_MODEL);
   }
 
   if (provider === 'openai') {
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error('OPENAI_API_KEY is required when LLM_PROVIDER=openai');
+    if (!apiKey) {
+      console.warn('[llm] OPENAI_API_KEY not set — LLM features (ingest, query) will be unavailable');
+      return null;
+    }
     return new OpenAIProvider(apiKey, process.env.OPENAI_MODEL);
   }
 

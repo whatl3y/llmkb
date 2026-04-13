@@ -18,6 +18,29 @@ function ask(question: string, defaultValue?: string): Promise<string> {
   });
 }
 
+function maskSecret(value: string | undefined): string | undefined {
+  if (!value || value.length < 8) return value;
+  return value.slice(0, 4) + '...' + value.slice(-4);
+}
+
+/** Update .env file with the given key-value pairs. Uncomments lines if needed. */
+function updateEnvFile(updates: Record<string, string>) {
+  const envPath = '.env';
+  if (!fs.existsSync(envPath)) return;
+
+  let content = fs.readFileSync(envPath, 'utf-8');
+  for (const [key, value] of Object.entries(updates)) {
+    // Match both commented (#KEY=...) and uncommented (KEY=...) lines
+    const regex = new RegExp(`^#?${key}=.*$`, 'm');
+    if (regex.test(content)) {
+      content = content.replace(regex, `${key}=${value}`);
+    } else {
+      content += `${key}=${value}\n`;
+    }
+  }
+  fs.writeFileSync(envPath, content);
+}
+
 async function main() {
   console.log('\n--- Knowledge Base Setup ---\n');
 
@@ -58,28 +81,128 @@ async function main() {
   // 3. Create .env from .env.example if .env doesn't exist
   if (!fs.existsSync('.env') && fs.existsSync('.env.example')) {
     fs.copyFileSync('.env.example', '.env');
-    console.log('  Created .env from .env.example — edit it to add your API keys');
+    console.log('  Created .env from .env.example');
   }
 
-  // 4. Bootstrap storage
-  const storageBackend = process.env.STORAGE_BACKEND || 'filesystem';
+  // 4. Interactive .env configuration
+  const envUpdates: Record<string, string> = {};
 
+  // --- LLM Provider ---
+  console.log('\n--- LLM Configuration ---\n');
+  const llmProvider = await ask('LLM provider (claude or openai)', process.env.LLM_PROVIDER || 'claude');
+  envUpdates.LLM_PROVIDER = llmProvider;
+
+  if (llmProvider === 'claude') {
+    const existingKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = await ask('Anthropic API key', maskSecret(existingKey));
+    // Only write if user entered a real key (not the masked version)
+    if (apiKey && apiKey !== maskSecret(existingKey)) {
+      envUpdates.ANTHROPIC_API_KEY = apiKey;
+    } else if (existingKey) {
+      console.log('  (keeping existing key)');
+    }
+  } else if (llmProvider === 'openai') {
+    const existingKey = process.env.OPENAI_API_KEY;
+    const apiKey = await ask('OpenAI API key', maskSecret(existingKey));
+    if (apiKey && apiKey !== maskSecret(existingKey)) {
+      envUpdates.OPENAI_API_KEY = apiKey;
+    } else if (existingKey) {
+      console.log('  (keeping existing key)');
+    }
+  }
+
+  // --- Storage Backend ---
+  console.log('\n--- Storage Backend ---\n');
+  const storageBackend = await ask(
+    'Storage backend (filesystem or database)',
+    process.env.STORAGE_BACKEND || 'filesystem'
+  );
+  envUpdates.STORAGE_BACKEND = storageBackend;
+
+  if (storageBackend === 'database') {
+    const dbUrl = await ask(
+      'PostgreSQL URL',
+      process.env.DATABASE_URL || 'postgres://llmkb:llmkb@localhost:5433/llmkb'
+    );
+    envUpdates.DATABASE_URL = dbUrl;
+
+    const bucket = await ask('AWS S3 bucket name', process.env.AWS_BUCKET || 'llmkb-uploads');
+    envUpdates.AWS_BUCKET = bucket;
+
+    const region = await ask('AWS region', process.env.AWS_REGION || 'us-east-1');
+    envUpdates.AWS_REGION = region;
+
+    console.log('  Note: AWS credentials fall back to IAM roles if not set in .env');
+  }
+
+  // --- ChromaDB ---
+  console.log('\n--- ChromaDB (vector search) ---\n');
+  const existingChromaApiKey = process.env.CHROMA_API_KEY;
+  const useChromaCloud = await ask(
+    'Use Chroma Cloud? (y/n)',
+    existingChromaApiKey ? 'y' : 'n'
+  );
+
+  if (useChromaCloud.toLowerCase() === 'y') {
+    const chromaApiKey = await ask('Chroma API key', maskSecret(existingChromaApiKey));
+    if (chromaApiKey && chromaApiKey !== maskSecret(existingChromaApiKey)) {
+      envUpdates.CHROMA_API_KEY = chromaApiKey;
+    }
+    const chromaTenant = await ask('Chroma tenant', process.env.CHROMA_TENANT);
+    if (chromaTenant) envUpdates.CHROMA_TENANT = chromaTenant;
+    const chromaDb = await ask('Chroma database', process.env.CHROMA_DATABASE || 'default');
+    if (chromaDb) envUpdates.CHROMA_DATABASE = chromaDb;
+  } else {
+    const chromaUrl = await ask(
+      'ChromaDB URL (docker compose starts one automatically)',
+      process.env.CHROMA_URL || 'http://localhost:8930'
+    );
+    envUpdates.CHROMA_URL = chromaUrl;
+  }
+
+  // --- Auth ---
+  console.log('\n--- Authentication (optional) ---\n');
+  const enableAuth = await ask(
+    'Enable Google OAuth authentication? (y/n)',
+    process.env.AUTH_ENABLED === 'true' ? 'y' : 'n'
+  );
+
+  if (enableAuth.toLowerCase() === 'y') {
+    envUpdates.AUTH_ENABLED = 'true';
+
+    const existingClientId = process.env.GOOGLE_CLIENT_ID;
+    const clientId = await ask('Google OAuth client ID', maskSecret(existingClientId));
+    if (clientId && clientId !== maskSecret(existingClientId)) {
+      envUpdates.GOOGLE_CLIENT_ID = clientId;
+    }
+
+    const existingClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const clientSecret = await ask('Google OAuth client secret', maskSecret(existingClientSecret));
+    if (clientSecret && clientSecret !== maskSecret(existingClientSecret)) {
+      envUpdates.GOOGLE_CLIENT_SECRET = clientSecret;
+    }
+
+    if (!process.env.JWT_SECRET) {
+      const { randomBytes } = await import('crypto');
+      const jwtSecret = randomBytes(32).toString('hex');
+      envUpdates.JWT_SECRET = jwtSecret;
+      console.log('  Generated JWT_SECRET automatically');
+    }
+
+    const host = await ask('Public URL (for OAuth callback)', process.env.HOST || 'http://localhost:3000');
+    envUpdates.HOST = host;
+  } else {
+    envUpdates.AUTH_ENABLED = 'false';
+  }
+
+  // Write all env updates
+  updateEnvFile(envUpdates);
+  console.log('\n  Updated .env');
+
+  // 5. Bootstrap storage
   if (storageBackend === 'database') {
     console.log('\n  Storage backend: database (Postgres + S3)');
     console.log('  Skipping local directory creation — data lives in Postgres/S3.');
-
-    if (!process.env.DATABASE_URL) {
-      console.log('  ⚠  DATABASE_URL is not set — add it to .env (e.g. postgres://llmkb:llmkb@localhost:5433/llmkb)');
-    } else {
-      console.log('  ✓  DATABASE_URL detected');
-    }
-
-    if (!process.env.AWS_BUCKET) {
-      console.log('  ⚠  AWS_BUCKET is not set — add it to .env for upload storage');
-    } else {
-      console.log('  ✓  AWS_BUCKET detected');
-    }
-
     console.log('  Run: npm run migrate');
   } else {
     // Ensure data directory structure exists
@@ -134,37 +257,6 @@ async function main() {
       fs.writeFileSync(logPath, '# Wiki Log\n');
       console.log('  Created data/wiki/log.md');
     }
-  }
-
-  // 5. Validate LLM provider config
-  const llmProvider = process.env.LLM_PROVIDER || 'claude';
-  const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
-  const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
-
-  console.log(`\n  LLM provider: ${llmProvider}`);
-  if (llmProvider === 'claude' && !hasAnthropicKey) {
-    console.log('  ⚠  ANTHROPIC_API_KEY is not set — add it to .env before starting');
-  } else if (llmProvider === 'openai' && !hasOpenAIKey) {
-    console.log('  ⚠  OPENAI_API_KEY is not set — add it to .env before starting');
-  } else {
-    console.log('  ✓  API key detected');
-  }
-
-  // 6. Validate ChromaDB config
-  const chromaApiKey = process.env.CHROMA_API_KEY;
-  const chromaTenant = process.env.CHROMA_TENANT;
-  const chromaUrl = process.env.CHROMA_URL;
-
-  console.log('\n  ChromaDB (required for embeddings/search):');
-  if (chromaApiKey && chromaTenant) {
-    console.log('  ✓  Chroma Cloud credentials detected (API key + tenant)');
-  } else if (chromaUrl) {
-    console.log(`  ✓  Local/self-hosted Chroma at ${chromaUrl}`);
-    console.log('     Make sure ChromaDB is running, or use "docker compose up" which starts it automatically');
-  } else {
-    console.log('  ⚠  No Chroma config detected — set CHROMA_URL for local, or CHROMA_API_KEY + CHROMA_TENANT for Cloud');
-    console.log('     "docker compose up" starts a local instance automatically (mapped to port 8930)');
-    console.log('     For standalone local dev, set CHROMA_URL=http://localhost:8930 in .env');
   }
 
   console.log('\nSetup complete! Run "docker compose up --build" or "npm run dev" to start.\n');

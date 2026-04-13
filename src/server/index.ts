@@ -64,13 +64,13 @@ async function main() {
     ? { apiKey: config.chroma.apiKey, tenant: config.chroma.tenant, database: config.chroma.database }
     : undefined;
   const search = new SearchService(config.chroma.url, 'wiki', chromaAuth, chromaCloud);
-  const ingest = new IngestService(llm, search, storage, kbConfig);
-  const query = new QueryService(llm, search, storage, kbConfig);
-  const intent = new IntentService(llm);
+  const ingest = llm ? new IngestService(llm, search, storage, kbConfig) : null;
+  const query = llm ? new QueryService(llm, search, storage, kbConfig) : null;
+  const intent = llm ? new IntentService(llm) : null;
   const lint = new LintService(storage, kbConfig);
 
   console.log(`[init] KB: ${kbConfig.name} — ${kbConfig.topic}`);
-  console.log(`[init] LLM provider: ${llm.name} (${llm.model})`);
+  console.log(`[init] LLM provider: ${llm ? `${llm.name} (${llm.model})` : 'NONE — set an API key to enable ingest/query'}`);
   console.log(`[init] ChromaDB: ${chromaCloud ? `Cloud (tenant=${config.chroma.tenant}, db=${config.chroma.database})` : config.chroma.url}`);
   console.log(`[init] Auth: ${config.auth.enabled ? 'enabled' : 'disabled'}`);
 
@@ -94,18 +94,27 @@ async function main() {
   // Auth middleware for ingest routes
   const requireIngestAuth = createRequireIngestAuth(config.auth.enabled, config.auth.jwtSecret, userStore);
 
+  // Middleware that rejects requests when LLM is not configured
+  const requireLLM: express.RequestHandler = (_req, res, next) => {
+    if (!llm) {
+      res.status(503).json({ success: false, error: 'LLM provider not configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY' });
+      return;
+    }
+    next();
+  };
+
   // API routes
   app.use('/api/config', createConfigRouter({ config: kbConfig, authEnabled: config.auth.enabled, jwtSecret: config.auth.jwtSecret, userStore }));
   app.use('/api/wiki', createWikiRouter(storage));
-  app.use('/api/ingest', requireIngestAuth, createIngestRouter(ingest));
-  app.use('/api/query', createQueryRouter(query, llm));
+  app.use('/api/ingest', requireLLM, requireIngestAuth, createIngestRouter(ingest!));
+  app.use('/api/query', requireLLM, createQueryRouter(query!, llm!));
   app.use('/api/search', createSearchRouter(search, storage));
-  app.use('/api/intent', createIntentRouter(intent));
+  app.use('/api/intent', requireLLM, createIntentRouter(intent!));
   app.use('/api/lint', createLintRouter(lint));
 
   // Health check
   app.get('/api/health', (_req, res) => {
-    res.json({ success: true, data: { status: 'ok', provider: llm.name, model: llm.model, storage: config.storage.backend } });
+    res.json({ success: true, data: { status: 'ok', provider: llm?.name ?? null, model: llm?.model ?? null, storage: config.storage.backend } });
   });
 
   // Serve frontend if the built files exist (production / Docker)
@@ -127,8 +136,8 @@ async function main() {
   // Error handler
   app.use(errorHandler);
 
-  // Start file watcher for auto-ingestion (filesystem backend only)
-  if (config.watchRaw && config.storage.backend === 'filesystem') {
+  // Start file watcher for auto-ingestion (filesystem backend only, requires LLM)
+  if (config.watchRaw && config.storage.backend === 'filesystem' && ingest) {
     const rawDir = path.join(path.resolve(config.storage.dataDir), 'raw');
     const watcher = chokidar.watch(rawDir, {
       ignoreInitial: true,

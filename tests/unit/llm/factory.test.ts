@@ -58,16 +58,16 @@ describe('createProviderFromEnv', () => {
     expect(provider).toBeInstanceOf(OpenAIProvider);
   });
 
-  it('throws if Claude API key is missing', () => {
+  it('returns null if Claude API key is missing', () => {
     process.env.LLM_PROVIDER = 'claude';
     delete process.env.ANTHROPIC_API_KEY;
-    expect(() => createProviderFromEnv()).toThrow('ANTHROPIC_API_KEY is required');
+    expect(createProviderFromEnv()).toBeNull();
   });
 
-  it('throws if OpenAI API key is missing', () => {
+  it('returns null if OpenAI API key is missing', () => {
     process.env.LLM_PROVIDER = 'openai';
     delete process.env.OPENAI_API_KEY;
-    expect(() => createProviderFromEnv()).toThrow('OPENAI_API_KEY is required');
+    expect(createProviderFromEnv()).toBeNull();
   });
 
   it('defaults to Claude when LLM_PROVIDER is not set', () => {
