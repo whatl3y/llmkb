@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { statSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import chokidar from 'chokidar';
@@ -122,7 +123,6 @@ async function main() {
   const staticDir = path.join(__dirname, '../../dist/web');
   const indexHtml = path.join(staticDir, 'index.html');
   try {
-    const { statSync } = await import('fs');
     if (statSync(indexHtml).isFile()) {
       app.use(express.static(staticDir));
       app.get('*', (_req, res) => {

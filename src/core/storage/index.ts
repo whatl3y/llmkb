@@ -1,5 +1,7 @@
 import path from 'path';
 import config from '../../config.js';
+import { DatabaseStorage } from './database.js';
+import { FileSystemStorage } from './filesystem.js';
 import type { StorageBackend } from './types.js';
 
 export type { StorageBackend, HashEntry } from './types.js';
@@ -10,13 +12,11 @@ export type { StorageBackend, HashEntry } from './types.js';
  * - "filesystem" (default): all data in local DATA_DIR/
  * - "database": wiki pages + metadata in Postgres, uploads in S3
  */
-export async function createStorageBackend(): Promise<StorageBackend> {
+export function createStorageBackend(): StorageBackend {
   if (config.storage.backend === 'database') {
-    const { DatabaseStorage } = await import('./database.js');
     return new DatabaseStorage();
   }
 
   const dataDir = path.resolve(config.storage.dataDir);
-  const { FileSystemStorage } = await import('./filesystem.js');
   return new FileSystemStorage(dataDir);
 }

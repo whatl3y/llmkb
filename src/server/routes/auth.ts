@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Google, generateState, generateCodeVerifier } from 'arctic';
-import { SignJWT } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 import type { UserStore } from '../../core/auth.js';
 
 const COOKIE_NAME = 'kb_session';
@@ -142,7 +142,6 @@ export function createAuthRouter(opts: AuthRouterOptions): Router {
     }
 
     try {
-      const { jwtVerify } = await import('jose');
       const { payload } = await jwtVerify(token, jwtKey);
       const email = payload.email as string | undefined;
       if (!email) {

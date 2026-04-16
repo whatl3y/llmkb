@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { randomBytes } from 'crypto';
 import readline from 'readline';
 import fs from 'fs';
 
@@ -183,7 +184,6 @@ async function main() {
     }
 
     if (!process.env.JWT_SECRET) {
-      const { randomBytes } = await import('crypto');
       const jwtSecret = randomBytes(32).toString('hex');
       envUpdates.JWT_SECRET = jwtSecret;
       console.log('  Generated JWT_SECRET automatically');
