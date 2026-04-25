@@ -26,7 +26,7 @@ import { createLintRouter } from './routes/lint.js';
 import { createConfigRouter } from './routes/config.js';
 import { createIntentRouter } from './routes/intent.js';
 import { createAuthRouter } from './routes/auth.js';
-import { createRequireIngestAuth } from './middleware/auth.js';
+import { createRequireIngestAuth, createRequireReadAuth } from './middleware/auth.js';
 import { errorHandler } from './middleware/error.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -73,7 +73,7 @@ async function main() {
   console.log(`[init] KB: ${kbConfig.name} — ${kbConfig.topic}`);
   console.log(`[init] LLM provider: ${llm ? `${llm.name} (${llm.model})` : 'NONE — set an API key to enable ingest/query'}`);
   console.log(`[init] ChromaDB: ${chromaCloud ? `Cloud (tenant=${config.chroma.tenant}, db=${config.chroma.database})` : config.chroma.url}`);
-  console.log(`[init] Auth: ${config.auth.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`[init] Auth: ${config.auth.enabled ? 'enabled' : 'disabled'}${config.auth.enabled && config.auth.readEnabled ? ' (read-auth on)' : ''}`);
 
   // Create Express app
   const app = express();
@@ -95,6 +95,9 @@ async function main() {
   // Auth middleware for ingest routes
   const requireIngestAuth = createRequireIngestAuth(config.auth.enabled, config.auth.jwtSecret, userStore);
 
+  // Auth middleware for read routes (when AUTH_READ_ENABLED=true)
+  const requireReadAuth = createRequireReadAuth(config.auth.enabled, config.auth.readEnabled, config.auth.jwtSecret, userStore);
+
   // Middleware that rejects requests when LLM is not configured
   const requireLLM: express.RequestHandler = (_req, res, next) => {
     if (!llm) {
@@ -105,13 +108,13 @@ async function main() {
   };
 
   // API routes
-  app.use('/api/config', createConfigRouter({ config: kbConfig, authEnabled: config.auth.enabled, jwtSecret: config.auth.jwtSecret, userStore }));
-  app.use('/api/wiki', createWikiRouter(storage));
+  app.use('/api/config', createConfigRouter({ config: kbConfig, authEnabled: config.auth.enabled, authReadEnabled: config.auth.enabled && config.auth.readEnabled, jwtSecret: config.auth.jwtSecret, userStore }));
+  app.use('/api/wiki', requireReadAuth, createWikiRouter(storage));
   app.use('/api/ingest', requireLLM, requireIngestAuth, createIngestRouter(ingest!));
-  app.use('/api/query', requireLLM, createQueryRouter(query!, llm!));
-  app.use('/api/search', createSearchRouter(search, storage));
-  app.use('/api/intent', requireLLM, createIntentRouter(intent!));
-  app.use('/api/lint', createLintRouter(lint));
+  app.use('/api/query', requireLLM, requireReadAuth, createQueryRouter(query!, llm!));
+  app.use('/api/search', requireReadAuth, createSearchRouter(search, storage));
+  app.use('/api/intent', requireLLM, requireReadAuth, createIntentRouter(intent!));
+  app.use('/api/lint', requireReadAuth, createLintRouter(lint));
 
   // Health check
   app.get('/api/health', (_req, res) => {

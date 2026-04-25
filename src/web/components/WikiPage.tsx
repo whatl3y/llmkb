@@ -84,7 +84,7 @@ export default function WikiPage() {
             )}
           </div>
           {fm.tags && Array.isArray(fm.tags) && fm.tags.length > 0 && (
-            <div className="flex gap-1.5 mt-3">
+            <div className="flex flex-wrap gap-1.5 mt-3">
               {(fm.tags as string[]).map((tag) => (
                 <span key={tag} className="text-xs bg-white dark:bg-gray-700 border dark:border-gray-600 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded">
                   {tag}
@@ -93,7 +93,7 @@ export default function WikiPage() {
             </div>
           )}
           {(fm.source_url || fm.source_file) && (
-            <div className="mt-3 flex items-center gap-4">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               {fm.source_url && (
                 <a
                   href={String(fm.source_url)}

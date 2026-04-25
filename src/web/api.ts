@@ -17,6 +17,7 @@ export const getConfig = () =>
     topic: string;
     description: string;
     authEnabled?: boolean;
+    authReadEnabled?: boolean;
     user?: { email: string; name: string } | null;
   }>('/config');
 

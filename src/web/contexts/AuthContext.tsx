@@ -9,6 +9,7 @@ interface AuthUser {
 
 interface AuthContextValue {
   authEnabled: boolean;
+  authReadEnabled: boolean;
   user: AuthUser | null;
   loading: boolean;
   canIngest: boolean;
@@ -18,6 +19,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue>({
   authEnabled: false,
+  authReadEnabled: false,
   user: null,
   loading: true,
   canIngest: true,
@@ -27,6 +29,7 @@ const AuthContext = createContext<AuthContextValue>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authEnabled, setAuthEnabled] = useState(false);
+  const [authReadEnabled, setAuthReadEnabled] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getConfig()
       .then((cfg) => {
         setAuthEnabled(cfg.authEnabled ?? false);
+        setAuthReadEnabled(cfg.authReadEnabled ?? false);
         setUser(cfg.user ?? null);
       })
       .catch(() => {})
@@ -52,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ authEnabled, user, loading, canIngest, login, logout: handleLogout }}>
+    <AuthContext.Provider value={{ authEnabled, authReadEnabled, user, loading, canIngest, login, logout: handleLogout }}>
       {children}
     </AuthContext.Provider>
   );

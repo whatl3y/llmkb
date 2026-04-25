@@ -6,12 +6,13 @@ import { parseUserFromCookie } from '../middleware/auth.js';
 interface ConfigRouterOptions {
   config: KBConfig;
   authEnabled: boolean;
+  authReadEnabled: boolean;
   jwtSecret?: string;
   userStore: UserStore | null;
 }
 
 export function createConfigRouter(opts: ConfigRouterOptions): Router {
-  const { config, authEnabled, jwtSecret, userStore } = opts;
+  const { config, authEnabled, authReadEnabled, jwtSecret, userStore } = opts;
   const router = Router();
 
   router.get('/', async (req, res) => {
@@ -26,6 +27,7 @@ export function createConfigRouter(opts: ConfigRouterOptions): Router {
         topic: config.topic,
         description: config.description,
         authEnabled,
+        authReadEnabled,
         user,
       },
     });

@@ -35,6 +35,7 @@ export default function Aws(region: string = config.aws.region) {
   const s3Client = new S3Client({
     region,
     credentials: accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined,
+    ...(config.aws.endpoint ? { endpoint: config.aws.endpoint, forcePathStyle: true } : {}),
   });
 
   return {

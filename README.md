@@ -148,6 +148,7 @@ Prompts you for a KB name, topic, description, and LLM focus instruction. Writes
 | `WATCH_RAW` | `true` | Auto-ingest files dropped in `data/raw/` (filesystem backend only) |
 | **Auth** | | |
 | `AUTH_ENABLED` | `false` | Set to `true` to require Google OAuth for ingestion |
+| `AUTH_READ_ENABLED` | `false` | Set to `true` (with `AUTH_ENABLED`) to also require auth for browsing, search, and query |
 | `GOOGLE_CLIENT_ID` | -- | Google OAuth client ID (required when auth enabled) |
 | `GOOGLE_CLIENT_SECRET` | -- | Google OAuth client secret (required when auth enabled) |
 | `JWT_SECRET` | -- | Secret for signing session tokens (required when auth enabled) |
@@ -197,6 +198,7 @@ With the filesystem backend, users are stored in `data/auth/users.json`. With th
 
 - **Auth off** (default): full access for everyone, no login UI
 - **Auth on, not signed in**: read-only access (search, query, browse); ingest UI is hidden; API returns 401 on ingest endpoints
+- **Auth on + read auth on, not signed in**: no access — redirected to login page; API returns 401 on all read and ingest endpoints
 - **Auth on, signed in**: full access including ingestion
 
 A user icon appears in the top-right corner (next to the theme toggle) when auth is enabled. Clicking it opens a login page where users authenticate via Google. Only whitelisted emails can sign in. Sessions last 30 days via a signed JWT stored in an HttpOnly cookie.

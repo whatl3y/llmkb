@@ -363,9 +363,9 @@ export default function UnifiedView() {
       {/* ── Header with stats ──────────────────── */}
       <div className="mb-8">
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">{kbName || 'Knowledge Base'}</h1>
-        <div className="flex items-center text-xs text-gray-400 dark:text-gray-500">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 dark:text-gray-500">
           {stats && (
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <span>{stats.totalPages} pages</span>
               <span>{stats.concepts} concepts</span>
               <span>{stats.entities} entities</span>
@@ -563,7 +563,7 @@ export default function UnifiedView() {
       {/* ── Results: Browse ─────────────────────── */}
       {result?.kind === 'browse' && (
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h2 className="text-lg font-semibold">
               {result.topic ? <>Pages matching &quot;{result.topic}&quot;</> : 'Wiki Pages'}
             </h2>
@@ -622,7 +622,7 @@ export default function UnifiedView() {
                         </span>
                       </div>
                       {page.tags?.length > 0 && (
-                        <div className="flex gap-1.5 mt-2">
+                        <div className="flex flex-wrap gap-1.5 mt-2">
                           {page.tags.slice(0, 5).map((tag) => (
                             <span key={tag} className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded">
                               {tag}

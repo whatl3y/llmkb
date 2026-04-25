@@ -9,10 +9,12 @@ export default {
   },
 
   aws: {
-    bucket: process.env.AWS_BUCKET || 'llmkb-uploads',
+    bucket: process.env.AWS_BUCKET || process.env.BUCKET_NAME || 'llmkb-uploads',
     region: process.env.AWS_REGION || 'us-east-1',
     accessKey: process.env.AWS_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    /** S3-compatible endpoint (e.g. Fly Tigris, Cloudflare R2, MinIO) */
+    endpoint: process.env.AWS_ENDPOINT_URL_S3 || '',
   },
 
   chroma: {
@@ -35,6 +37,7 @@ export default {
 
   auth: {
     enabled: process.env.AUTH_ENABLED === 'true',
+    readEnabled: process.env.AUTH_READ_ENABLED === 'true',
     googleClientId: process.env.GOOGLE_CLIENT_ID || '',
     googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     jwtSecret: process.env.JWT_SECRET || '',

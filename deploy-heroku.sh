@@ -111,6 +111,16 @@ setup_heroku_app() {
     echo "Setting stack to container..."
     heroku stack:set container -a "$APP_NAME"
 
+    # Ensure DATABASE_URL is set (provision Postgres if needed)
+    echo "Checking for DATABASE_URL..."
+    if heroku config:get DATABASE_URL -a "$APP_NAME" | grep -q .; then
+        echo "DATABASE_URL is already set."
+    else
+        echo "DATABASE_URL is not set. Provisioning Heroku Postgres (essential-0)..."
+        heroku addons:create heroku-postgresql:essential-0 -a "$APP_NAME" --wait
+        echo "Postgres provisioned. DATABASE_URL is now set."
+    fi
+
     echo ""
 }
 

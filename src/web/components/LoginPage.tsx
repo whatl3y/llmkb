@@ -2,14 +2,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 
 const ERROR_MESSAGES: Record<string, string> = {
-  not_whitelisted: 'Your account is not authorized to add content. Contact the admin to request access.',
+  not_whitelisted: 'Your account is not authorized. Contact the admin to request access.',
   invalid_state: 'Authentication failed — please try again.',
   no_email: 'Could not retrieve an email from your Google account.',
   oauth_failed: 'Something went wrong during sign-in. Please try again.',
 };
 
 export default function LoginPage() {
-  const { user, login, logout } = useAuth();
+  const { user, authReadEnabled, login, logout } = useAuth();
   const [searchParams] = useSearchParams();
   const authError = searchParams.get('authError');
 
@@ -44,7 +44,9 @@ export default function LoginPage() {
             </div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Sign in</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              Sign in to add content to this knowledge base.
+              {authReadEnabled
+                ? 'Sign in to access this knowledge base.'
+                : 'Sign in to add content to this knowledge base.'}
             </p>
 
             {authError && (
