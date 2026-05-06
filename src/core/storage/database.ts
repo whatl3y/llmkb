@@ -291,4 +291,26 @@ export class DatabaseStorage implements StorageBackend {
       .executeTakeFirst();
     return BigInt(result.numDeletedRows) > 0n;
   }
+
+  // --- Meta ---
+
+  async getMeta<T = unknown>(key: string): Promise<T | null> {
+    const row = await db
+      .selectFrom('kv_meta')
+      .select('value')
+      .where('key', '=', key)
+      .executeTakeFirst();
+    return (row?.value as T | undefined) ?? null;
+  }
+
+  async setMeta<T = unknown>(key: string, value: T): Promise<void> {
+    const serialized = JSON.stringify(value);
+    await db
+      .insertInto('kv_meta')
+      .values({ key, value: serialized, updated_at: new Date() })
+      .onConflict((oc) =>
+        oc.column('key').doUpdateSet({ value: serialized, updated_at: new Date() }),
+      )
+      .execute();
+  }
 }

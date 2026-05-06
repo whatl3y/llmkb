@@ -59,7 +59,8 @@ export class IngestService {
     private llm: LLMProvider,
     private search: SearchService,
     private storage: StorageBackend,
-    private config: KBConfig
+    private config: KBConfig,
+    private onWikiUpdate?: () => void,
   ) {
     this.systemPrompt = buildIngestSystemPrompt(config.topic, config.focusPrompt);
   }
@@ -128,6 +129,8 @@ export class IngestService {
       await this.updateSourceFileFrontmatter(result.sourceSummary.slug, savedPath);
     }
 
+    this.onWikiUpdate?.();
+
     return result;
   }
 
@@ -173,6 +176,8 @@ export class IngestService {
       result.sourceSummary.sourceFile = savedPath;
       await this.updateSourceFileFrontmatter(result.sourceSummary.slug, savedPath);
     }
+
+    this.onWikiUpdate?.();
 
     return result;
   }

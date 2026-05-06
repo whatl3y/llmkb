@@ -260,7 +260,7 @@ async function describeFrame(
 async function describeWithAnthropic(base64: string, prompt: string): Promise<string> {
   const client = new Anthropic({ apiKey: config.llm.anthropicApiKey });
   const response = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: config.llm.claudeVisionModel,
     max_tokens: 300,
     messages: [
       {
@@ -279,7 +279,7 @@ async function describeWithAnthropic(base64: string, prompt: string): Promise<st
 async function describeWithOpenAI(base64: string, prompt: string): Promise<string> {
   const client = new OpenAI({ apiKey: config.llm.openaiApiKey });
   const response = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: config.llm.openaiVisionModel,
     max_tokens: 300,
     messages: [
       {

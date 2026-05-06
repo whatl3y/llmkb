@@ -7,7 +7,8 @@ import type { StorageBackend } from './storage/types.js';
 export class LintService {
   constructor(
     private storage: StorageBackend,
-    private config: KBConfig
+    private config: KBConfig,
+    private onWikiUpdate?: () => void,
   ) {}
 
   async run(): Promise<LintReport> {
@@ -119,6 +120,8 @@ export class LintService {
     };
 
     await this.saveReport(report);
+
+    this.onWikiUpdate?.();
 
     return report;
   }

@@ -48,4 +48,9 @@ export interface StorageBackend {
   findUserByEmail(email: string): Promise<AuthUser | null>;
   addUser(email: string, name: string): Promise<AuthUser>;
   removeUser(email: string): Promise<boolean>;
+
+  // --- Meta (small KV for derived/operational state) ---
+
+  getMeta<T = unknown>(key: string): Promise<T | null>;
+  setMeta<T = unknown>(key: string, value: T): Promise<void>;
 }

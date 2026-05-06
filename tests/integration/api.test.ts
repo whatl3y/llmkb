@@ -13,7 +13,7 @@ const storage = new FileSystemStorage(TEST_DATA_DIR);
 function createTestApp() {
   const app = express();
   app.use(express.json());
-  app.use('/api/wiki', createWikiRouter(storage));
+  app.use('/api/wiki', createWikiRouter(storage, null));
   app.use(errorHandler);
   return app;
 }

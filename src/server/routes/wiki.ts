@@ -3,8 +3,9 @@ import matter from 'gray-matter';
 import type { WikiStats, LogEntry } from '../../types/index.js';
 import { excerpt } from '../../utils/markdown.js';
 import type { StorageBackend } from '../../core/storage/types.js';
+import type { OverviewService } from '../../core/overview.js';
 
-export function createWikiRouter(storage: StorageBackend): Router {
+export function createWikiRouter(storage: StorageBackend, overview: OverviewService | null): Router {
   const router = Router();
 
   /**
@@ -56,6 +57,19 @@ export function createWikiRouter(storage: StorageBackend): Router {
           raw,
         },
       });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * GET /api/wiki/overview — homepage overview (LLM-summarized description + highlights).
+   * Returns null when not yet generated (small KB, no LLM key, or first ingest pending).
+   */
+  router.get('/overview', async (_req, res, next) => {
+    try {
+      const data = overview ? await overview.getOverview() : null;
+      res.json({ success: true, data });
     } catch (err) {
       next(err);
     }

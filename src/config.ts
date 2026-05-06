@@ -33,6 +33,21 @@ export default {
     claudeModel: process.env.CLAUDE_MODEL || '',
     openaiApiKey: process.env.OPENAI_API_KEY || '',
     openaiModel: process.env.OPENAI_MODEL || '',
+    /**
+     * Vision model overrides. Used for per-image and per-frame analysis
+     * (image ingestion, video keyframe description) — kept separate from the
+     * main reasoning model since these run many times per source and benefit
+     * from a cheaper/faster tier by default.
+     */
+    claudeVisionModel: process.env.CLAUDE_VISION_MODEL || 'claude-haiku-4-5-20251001',
+    openaiVisionModel: process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini',
+    /**
+     * Overview model overrides. Used to regenerate the homepage "what this KB
+     * covers" summary after wiki writes. Defaults to a cheap tier — this runs
+     * once per debounced batch of writes.
+     */
+    claudeOverviewModel: process.env.CLAUDE_OVERVIEW_MODEL || 'claude-haiku-4-5-20251001',
+    openaiOverviewModel: process.env.OPENAI_OVERVIEW_MODEL || 'gpt-4o-mini',
   },
 
   auth: {

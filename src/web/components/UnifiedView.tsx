@@ -6,10 +6,12 @@ import {
   getPages,
   getStats,
   getConfig,
+  getOverview,
   search,
   queryWikiStream,
   ingestUrl,
   ingestText,
+  type KBOverview,
 } from '../api';
 import { useIngest, type FileStatus } from '../contexts/IngestContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -47,7 +49,7 @@ type ResultState = BrowseResult | SearchResult | QueryResult | IngestResult;
 
 /* ── Constants ──────────────────────────────────────────── */
 
-const ACCEPTED_EXTENSIONS = '.pdf,.csv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.txt,.md,.text';
+const ACCEPTED_EXTENSIONS = '.pdf,.csv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.mp3,.wav,.m4a,.ogg,.flac,.webm,.mp4,.mov,.avi,.mkv,.jpg,.jpeg,.png,.gif,.webp,.txt,.md,.text';
 
 const TYPE_LABELS: Record<string, string> = {
   concepts: 'Concepts',
@@ -67,6 +69,9 @@ const TYPE_COLORS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   parsing: 'Parsing file...',
+  transcribing: 'Transcribing audio...',
+  processing: 'Processing video...',
+  analyzing: 'Analyzing image...',
   llm: 'Analyzing with LLM...',
   writing: 'Writing wiki pages...',
   done: 'Complete',
@@ -77,6 +82,9 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-gray-200 dark:bg-gray-600',
   parsing: 'bg-blue-400 animate-pulse',
+  transcribing: 'bg-violet-400 animate-pulse',
+  processing: 'bg-indigo-400 animate-pulse',
+  analyzing: 'bg-fuchsia-400 animate-pulse',
   llm: 'bg-amber-400 animate-pulse',
   writing: 'bg-blue-400 animate-pulse',
   done: 'bg-emerald-500',
@@ -113,6 +121,10 @@ export default function UnifiedView() {
 
   // KB config
   const [kbName, setKbName] = useState('');
+  const [kbDescription, setKbDescription] = useState('');
+
+  // Overview (LLM-summarized — null until first regen)
+  const [overview, setOverview] = useState<KBOverview | null>(null);
 
   // Stats
   const [stats, setStats] = useState<{ totalPages: number; concepts: number; entities: number; sources: number } | null>(null);
@@ -139,10 +151,14 @@ export default function UnifiedView() {
   // Track which query we set to avoid re-triggering on our own URL changes
   const activeQueryRef = useRef(searchParams.get('q') || '');
 
-  // Load config + stats on mount
+  // Load config + stats + overview on mount
   useEffect(() => {
-    getConfig().then((cfg) => setKbName(cfg.name)).catch(() => {});
+    getConfig().then((cfg) => {
+      setKbName(cfg.name);
+      setKbDescription(cfg.description || '');
+    }).catch(() => {});
     getStats().then((s) => setStats({ totalPages: s.totalPages, concepts: s.concepts, entities: s.entities, sources: s.sources })).catch(() => {});
+    getOverview().then((o) => setOverview(o)).catch(() => {});
   }, []);
 
   // Restore from cache on back/forward navigation
@@ -360,9 +376,14 @@ export default function UnifiedView() {
 
   return (
     <div>
-      {/* ── Header with stats ──────────────────── */}
+      {/* ── Header with description + stats ──── */}
       <div className="mb-8">
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">{kbName || 'Knowledge Base'}</h1>
+        {(overview?.description || kbDescription) && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 max-w-3xl">
+            {overview?.description || kbDescription}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 dark:text-gray-500">
           {stats && (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -420,7 +441,7 @@ export default function UnifiedView() {
             Drop files here or click to upload
           </p>
           <p className="text-xs text-gray-300 dark:text-gray-600 mt-0.5">
-            PDF, CSV, XLS, XLSX, DOC, DOCX, PPT, PPTX, TXT, MD
+            PDF, Office docs, audio, video, images (JPG/PNG/GIF/WebP), TXT, MD
           </p>
           <input
             ref={fileInputRef}
@@ -546,6 +567,34 @@ export default function UnifiedView() {
           </div>
         )}
       </div>
+      )}
+
+      {/* ── Highlights (homepage only — hidden once a result is shown) ── */}
+      {!result && !busy && overview && overview.highlights.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Highlights</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {overview.highlights.map((h) => (
+              <Link
+                key={`${h.type}-${h.slug}`}
+                to={`/browse/${h.type}/${h.slug}`}
+                className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3 hover:shadow-md dark:hover:border-gray-600 transition-shadow block"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{h.title}</h3>
+                    {h.summary && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{h.summary}</p>
+                    )}
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${TYPE_COLORS[h.type] || 'bg-gray-100 text-gray-700'}`}>
+                    {h.type}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* ── Loading indicator ───────────────────── */}

@@ -8,12 +8,13 @@ import { fileURLToPath } from 'url';
 import chokidar from 'chokidar';
 
 import config from '../config.js';
-import { createProviderFromEnv } from '../core/llm/factory.js';
+import { createProviderFromEnv, createOverviewProviderFromEnv } from '../core/llm/factory.js';
 import { SearchService, type ChromaAuthOptions, type ChromaCloudOptions } from '../core/search.js';
 import { IngestService } from '../core/ingest.js';
 import { QueryService } from '../core/query.js';
 import { IntentService } from '../core/intent.js';
 import { LintService } from '../core/lint.js';
+import { OverviewService } from '../core/overview.js';
 import { loadConfig } from '../core/config.js';
 import { UserStore } from '../core/auth.js';
 import { createStorageBackend } from '../core/storage/index.js';
@@ -65,13 +66,19 @@ async function main() {
     ? { apiKey: config.chroma.apiKey, tenant: config.chroma.tenant, database: config.chroma.database }
     : undefined;
   const search = new SearchService(config.chroma.url, 'wiki', chromaAuth, chromaCloud);
-  const ingest = llm ? new IngestService(llm, search, storage, kbConfig) : null;
+
+  const overviewLlm = createOverviewProviderFromEnv();
+  const overview = overviewLlm ? new OverviewService(overviewLlm, storage, kbConfig) : null;
+  const onWikiUpdate = overview ? () => overview.markStale() : undefined;
+
+  const ingest = llm ? new IngestService(llm, search, storage, kbConfig, onWikiUpdate) : null;
   const query = llm ? new QueryService(llm, search, storage, kbConfig) : null;
   const intent = llm ? new IntentService(llm) : null;
-  const lint = new LintService(storage, kbConfig);
+  const lint = new LintService(storage, kbConfig, onWikiUpdate);
 
   console.log(`[init] KB: ${kbConfig.name} — ${kbConfig.topic}`);
   console.log(`[init] LLM provider: ${llm ? `${llm.name} (${llm.model})` : 'NONE — set an API key to enable ingest/query'}`);
+  console.log(`[init] Overview model: ${overviewLlm ? `${overviewLlm.name} (${overviewLlm.model})` : 'disabled (no API key)'}`);
   console.log(`[init] ChromaDB: ${chromaCloud ? `Cloud (tenant=${config.chroma.tenant}, db=${config.chroma.database})` : config.chroma.url}`);
   console.log(`[init] Auth: ${config.auth.enabled ? 'enabled' : 'disabled'}${config.auth.enabled && config.auth.readEnabled ? ' (read-auth on)' : ''}`);
 
@@ -109,7 +116,7 @@ async function main() {
 
   // API routes
   app.use('/api/config', createConfigRouter({ config: kbConfig, authEnabled: config.auth.enabled, authReadEnabled: config.auth.enabled && config.auth.readEnabled, jwtSecret: config.auth.jwtSecret, userStore }));
-  app.use('/api/wiki', requireReadAuth, createWikiRouter(storage));
+  app.use('/api/wiki', requireReadAuth, createWikiRouter(storage, overview));
   app.use('/api/ingest', requireLLM, requireIngestAuth, createIngestRouter(ingest!));
   app.use('/api/query', requireLLM, requireReadAuth, createQueryRouter(query!, llm!));
   app.use('/api/search', requireReadAuth, createSearchRouter(search, storage));

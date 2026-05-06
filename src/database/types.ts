@@ -6,6 +6,7 @@ export interface Database {
   users: UsersTable;
   wiki_log: WikiLogTable;
   uploads: UploadsTable;
+  kv_meta: KvMetaTable;
 }
 
 // --- Wiki Pages ---
@@ -75,3 +76,14 @@ export interface UploadsTable {
 
 export type Upload = Selectable<UploadsTable>;
 export type NewUpload = Insertable<UploadsTable>;
+
+// --- KV Meta (small operational state, e.g. cached homepage overview) ---
+
+export interface KvMetaTable {
+  key: string;
+  value: ColumnType<unknown, string, string>;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
+export type KvMetaEntry = Selectable<KvMetaTable>;
+export type NewKvMetaEntry = Insertable<KvMetaTable>;

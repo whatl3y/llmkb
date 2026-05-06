@@ -200,3 +200,19 @@ export interface LogEntry {
   title: string;
   details: string[];
 }
+
+export interface OverviewHighlight {
+  title: string;
+  summary: string;
+  type: string;
+  slug: string;
+}
+
+export interface KBOverview {
+  topic: string;
+  description: string;
+  highlights: OverviewHighlight[];
+  generatedAt: string;
+  pageCountAtGeneration: number;
+  sourceVersion: string;
+}

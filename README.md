@@ -127,9 +127,11 @@ Prompts you for a KB name, topic, description, and LLM focus instruction. Writes
 | **LLM** | | |
 | `LLM_PROVIDER` | `claude` | `claude` or `openai` |
 | `ANTHROPIC_API_KEY` | -- | Required if provider is `claude` |
-| `CLAUDE_MODEL` | `claude-sonnet-4-20250514` | Any Claude model ID |
+| `CLAUDE_MODEL` | `claude-sonnet-4-20250514` | Any Claude model ID (used for the main reasoning step) |
 | `OPENAI_API_KEY` | -- | Required if provider is `openai` |
-| `OPENAI_MODEL` | `gpt-4o` | Any OpenAI model ID |
+| `OPENAI_MODEL` | `gpt-4o` | Any OpenAI model ID (used for the main reasoning step) |
+| `CLAUDE_VISION_MODEL` | `claude-haiku-4-5-20251001` | Vision model used for image ingestion + video keyframe description (runs many times per source — defaults to a cheaper/faster tier) |
+| `OPENAI_VISION_MODEL` | `gpt-4o-mini` | OpenAI fallback vision model (used when only `OPENAI_API_KEY` is set) |
 | **ChromaDB** | | |
 | `CHROMA_URL` | `http://localhost:8930` | ChromaDB endpoint |
 | `CHROMA_PORT` | `8930` | Host port for ChromaDB container |
@@ -240,6 +242,9 @@ src/
       document.ts      # .docx / .doc (mammoth, word-extractor)
       presentation.ts  # .pptx (pptx-parser, officeparser)
       spreadsheet.ts   # .xlsx / .csv (xlsx)
+      audio.ts         # .mp3 / .wav / .m4a / .ogg / .flac / .webm (Whisper)
+      video.ts         # .mp4 / .mov / .avi / .mkv (ffmpeg + Whisper + vision)
+      image.ts         # .jpg / .jpeg / .png / .gif / .webp (vision LLM + OCR)
   server/
     index.ts           # Express server, storage init, file watcher, static serving
     routes/            # REST API endpoints (ingest, query, search, wiki, lint, config, intent)
@@ -315,6 +320,9 @@ data/                  # (filesystem backend only)
 - **Documents** -- `.docx`, `.doc`
 - **Presentations** -- `.pptx`
 - **Spreadsheets** -- `.xlsx`, `.csv`
+- **Audio** -- `.mp3`, `.wav`, `.m4a`, `.ogg`, `.flac`, `.webm` (transcribed via OpenAI Whisper — requires `OPENAI_API_KEY`)
+- **Video** -- `.mp4`, `.mov`, `.avi`, `.mkv` (audio transcribed + keyframes described — requires `ffmpeg` and `OPENAI_API_KEY`; uses Anthropic vision when `ANTHROPIC_API_KEY` is set, otherwise OpenAI)
+- **Images** -- `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp` (vision LLM extracts a description, OCR text, sentiment/tone, and visual tags — requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`)
 - **Text** -- `.txt`, `.md`, and other plain text
 
 ## License

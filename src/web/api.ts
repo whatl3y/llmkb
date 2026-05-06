@@ -21,6 +21,26 @@ export const getConfig = () =>
     user?: { email: string; name: string } | null;
   }>('/config');
 
+// Overview (LLM-summarized homepage description + highlights, regenerated on ingest)
+export interface OverviewHighlight {
+  title: string;
+  summary: string;
+  type: string;
+  slug: string;
+}
+
+export interface KBOverview {
+  topic: string;
+  description: string;
+  highlights: OverviewHighlight[];
+  generatedAt: string;
+  pageCountAtGeneration: number;
+  sourceVersion: string;
+}
+
+export const getOverview = () =>
+  request<KBOverview | null>('/wiki/overview');
+
 // Auth
 export const logout = () =>
   fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).then(() => {});
@@ -87,7 +107,7 @@ export interface FileProgress {
   index: number;
   total: number;
   filename: string;
-  status: 'parsing' | 'transcribing' | 'processing' | 'llm' | 'writing' | 'done' | 'duplicate' | 'error';
+  status: 'parsing' | 'transcribing' | 'processing' | 'analyzing' | 'llm' | 'writing' | 'done' | 'duplicate' | 'error';
   message: string;
   duplicate?: { slug: string; title: string; ingestedAt: string };
 }

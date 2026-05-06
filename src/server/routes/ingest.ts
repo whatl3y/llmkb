@@ -8,10 +8,11 @@ import { parseDocxBuffer, parseDocBuffer } from '../../core/parser/document.js';
 import { parsePresentationBuffer } from '../../core/parser/presentation.js';
 import { parseAudioBuffer } from '../../core/parser/audio.js';
 import { parseVideoBuffer } from '../../core/parser/video.js';
+import { parseImageBuffer } from '../../core/parser/image.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 
-type FileType = 'pdf' | 'spreadsheet' | 'doc' | 'docx' | 'presentation' | 'audio' | 'video' | 'text';
+type FileType = 'pdf' | 'spreadsheet' | 'doc' | 'docx' | 'presentation' | 'audio' | 'video' | 'image' | 'text';
 
 const EXT_MAP: Record<string, FileType> = {
   '.pdf': 'pdf',
@@ -32,6 +33,13 @@ const EXT_MAP: Record<string, FileType> = {
   '.mov': 'video',
   '.avi': 'video',
   '.mkv': 'video',
+  '.jpg': 'image',
+  '.jpeg': 'image',
+  '.jpe': 'image',
+  '.jfif': 'image',
+  '.png': 'image',
+  '.gif': 'image',
+  '.webp': 'image',
   '.txt': 'text',
   '.md': 'text',
   '.text': 'text',
@@ -84,6 +92,11 @@ async function fileToIngestRequest(file: Express.Multer.File): Promise<IngestReq
 
     case 'video': {
       const parsed = await parseVideoBuffer(file.buffer, file.originalname);
+      return { sourceType: 'text', content: parsed.content, title: parsed.title, originalBuffer, originalFilename };
+    }
+
+    case 'image': {
+      const parsed = await parseImageBuffer(file.buffer, file.originalname);
       return { sourceType: 'text', content: parsed.content, title: parsed.title, originalBuffer, originalFilename };
     }
 
@@ -209,9 +222,11 @@ export function createIngestRouter(ingestService: IngestService): Router {
         const fileType = detectFileType(file);
         const status = fileType === 'video' ? 'processing'
           : fileType === 'audio' ? 'transcribing'
+          : fileType === 'image' ? 'analyzing'
           : 'parsing';
         const statusMsg = fileType === 'video' ? `Processing ${filename} (extracting audio, analyzing frames)...`
           : fileType === 'audio' ? `Transcribing ${filename}...`
+          : fileType === 'image' ? `Analyzing image ${filename} (description, OCR, sentiment)...`
           : `Parsing ${filename}...`;
         if (clientConnected) {
           sendSSE(res, 'progress', {

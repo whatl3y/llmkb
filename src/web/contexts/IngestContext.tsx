@@ -3,7 +3,7 @@ import { ingestFiles, type FileProgress, type FileIngestResult } from '../api';
 
 export interface FileStatus {
   filename: string;
-  status: 'pending' | 'parsing' | 'transcribing' | 'processing' | 'llm' | 'writing' | 'done' | 'duplicate' | 'error';
+  status: 'pending' | 'parsing' | 'transcribing' | 'processing' | 'analyzing' | 'llm' | 'writing' | 'done' | 'duplicate' | 'error';
   message: string;
 }
 

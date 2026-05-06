@@ -3,12 +3,13 @@ import { ingestUrl, ingestText, ingestFiles, type FileProgress, type FileIngestR
 
 type Tab = 'url' | 'file' | 'text';
 
-const ACCEPTED_EXTENSIONS = '.pdf,.csv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.mp3,.wav,.m4a,.ogg,.flac,.webm,.mp4,.mov,.avi,.mkv,.txt,.md,.text';
+const ACCEPTED_EXTENSIONS = '.pdf,.csv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.mp3,.wav,.m4a,.ogg,.flac,.webm,.mp4,.mov,.avi,.mkv,.jpg,.jpeg,.png,.gif,.webp,.txt,.md,.text';
 
 const STATUS_LABELS: Record<string, string> = {
   parsing: 'Parsing file...',
   transcribing: 'Transcribing audio...',
   processing: 'Processing video...',
+  analyzing: 'Analyzing image...',
   llm: 'Analyzing with LLM...',
   writing: 'Writing wiki pages...',
   done: 'Complete',
@@ -21,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
   parsing: 'bg-blue-400 animate-pulse',
   transcribing: 'bg-violet-400 animate-pulse',
   processing: 'bg-indigo-400 animate-pulse',
+  analyzing: 'bg-fuchsia-400 animate-pulse',
   llm: 'bg-amber-400 animate-pulse',
   writing: 'bg-blue-400 animate-pulse',
   done: 'bg-emerald-500',
@@ -30,7 +32,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 interface FileStatus {
   filename: string;
-  status: 'pending' | 'parsing' | 'transcribing' | 'processing' | 'llm' | 'writing' | 'done' | 'duplicate' | 'error';
+  status: 'pending' | 'parsing' | 'transcribing' | 'processing' | 'analyzing' | 'llm' | 'writing' | 'done' | 'duplicate' | 'error';
   message: string;
 }
 
@@ -281,7 +283,7 @@ export default function IngestView() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Upload Files</label>
             <p className="text-xs text-gray-400 mb-2">
-              Supports PDF, CSV, XLS, XLSX, DOC, DOCX, PPT, PPTX, TXT, MD
+              Supports PDF, CSV, XLS, XLSX, DOC, DOCX, PPT, PPTX, MP3, WAV, M4A, MP4, MOV, JPG, PNG, GIF, WEBP, TXT, MD
             </p>
             <div className="border-2 border-dashed rounded-lg p-8 text-center">
               <input

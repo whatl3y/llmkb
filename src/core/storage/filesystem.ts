@@ -266,4 +266,26 @@ export class FileSystemStorage implements StorageBackend {
     await fs.writeFile(this.usersPath, JSON.stringify(filtered, null, 2), 'utf-8');
     return true;
   }
+
+  // --- Meta ---
+
+  private metaPath(key: string): string {
+    const safe = key.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return path.join(this.dataDir, '.meta', `${safe}.json`);
+  }
+
+  async getMeta<T = unknown>(key: string): Promise<T | null> {
+    try {
+      const raw = await fs.readFile(this.metaPath(key), 'utf-8');
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async setMeta<T = unknown>(key: string, value: T): Promise<void> {
+    const filePath = this.metaPath(key);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(value, null, 2), 'utf-8');
+  }
 }
